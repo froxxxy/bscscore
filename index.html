@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <title>Pool Scoring</title>
+    <style>
+        /* Base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+            padding: 0;
+            overscroll-behavior: none;
+        }
+
+        /* Screen container */
+        .screen-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            padding: 0;
+        }
+
+        /* Individual screens */
+        .screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            transform: translateX(100%);
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+
+        .screen.active {
+            display: block;
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .screen.slide-out {
+            transform: translateX(-100%);
+        }
+
+        .screen.slide-in {
+            transform: translateX(0);
+        }
+
+        /* Screen content */
+        .screen-content {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            padding: 20px;
+        }
+
+        .screen-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        /* Game List Screen specific styles */
+        .game-list {
+            width: 100%;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .game-filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .data-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-button {
+            flex: 1;
+            min-width: 100px;
+            padding: 20px;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 0;
+            font-size: 20px;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .filter-button.active {
+            background: #4CAF50;
+        }
+
+        .filter-button[onclick="filterGames('active')"] {
+            background: #1e4620;
+        }
+
+        .filter-button[onclick="filterGames('active')"].active {
+            background: #4CAF50;
+        }
+
+        .filter-button[onclick="filterGames('completed')"] {
+            background: #3a3a3a;
+        }
+
+        .filter-button[onclick="filterGames('completed')"].active {
+            background: #4CAF50;
+        }
+
+        .data-button {
+            flex: 1;
+            min-width: 100px;
+            padding: 20px;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 0;
+            font-size: 20px;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .data-button.export {
+            background: #1e4620;
+        }
+
+        .data-button.import {
+            background: #3a3a3a;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .game-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.5rem;
+            margin-bottom: 0.75rem;
+            background: #fff;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.1s ease, background-color 0.2s ease;
+        }
+
+        .game-item.active {
+            background: #1e4620;
+        }
+
+        .game-item.completed {
+            background: #3a3a3a;
+        }
+
+        .game-item:active {
+            transform: scale(0.98);
+        }
+
+        .game-info {
+            flex: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .game-type {
+            font-weight: bold;
+            font-size: 1.5rem;
+            min-width: 8rem;
+        }
+
+        .player-names {
+            color: #fff;
+            font-size: 1.5rem;
+            min-width: 20rem;
+        }
+
+        .game-scores {
+            font-size: 2rem;
+            font-weight: bold;
+            min-width: 6rem;
+            text-align: center;
+        }
+
+        .delete-button {
+            width: 3rem;
+            height: 3rem;
+            border: none;
+            background: #ff4444;
+            color: white;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 1rem;
+            transition: background-color 0.2s;
+            position: relative;
+        }
+
+        .delete-button::before {
+            content: '🗑️';
+            font-size: 1.5rem;
+        }
+
+        .delete-button:hover {
+            background: #cc0000;
+        }
+
+        .delete-button:active {
+            transform: scale(0.95);
+        }
+
+        .game-item.completed {
+            opacity: 0.7;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+            font-size: 1.5rem;
+        }
+
+        .game-players {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .game-details {
+            color: #ccc;
+            font-size: 18px;
+        }
+
+        .game-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-button {
+            padding: 20px;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 0;
+            font-size: 20px;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        /* Game Detail Screen specific styles */
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        .game-title {
+            font-size: 24px;
+            color: #ccc;
+        }
+
+        .score-display {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 20px;
+            flex: 1;
+        }
+
+        .player-score {
+            flex: 1;
+            text-align: center;
+            padding: 20px;
+            margin: 0 5px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .player-score:first-child {
+            background: #4CAF50; /* Bright green */
+        }
+
+        .player-score:last-child {
+            background: #f44336; /* Bright red */
+        }
+
+        .player-score.franky {
+            background: #1f21f2 !important; /* Special blue for Fränky */
+        }
+
+        .player-score.franky .player-name,
+        .player-score.franky .score {
+            color: #f12f12 !important; /* Special red text for Fränky */
+        }
+
+        .player-name {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        .score {
+            font-size: 15rem;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+
+        .score-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .score-button {
+            flex: 1;
+            padding: 30px;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 0;
+            font-size: 36px;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .score-button:active {
+            transform: scale(0.95);
+        }
+
+        .game-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .control-button {
+            flex: 1;
+            padding: 30px;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 0;
+            font-size: 24px;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .control-button.warning {
+            background: #f44336;
+        }
+
+        /* Navigation buttons */
+        .nav-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .nav-button {
+            padding: 30px;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 0;
+            font-size: 24px;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        /* New Game Screen specific styles */
+        .player-inputs {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 100%;
+            flex: 1;
+        }
+
+        .player-input {
+            margin-bottom: 20px;
+        }
+
+        .player-input label {
+            display: block;
+            margin-bottom: 10px;
+            color: #ccc;
+            font-size: 24px;
+        }
+
+        .name-input-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        .name-select {
+            flex: 1;
+            padding: 30px;
+            border: 2px solid #333;
+            background: #2a2a2a;
+            color: white;
+            font-size: 24px;
+            min-height: 44px;
+        }
+
+        .name-input {
+            flex: 2;
+            padding: 30px;
+            border: 2px solid #333;
+            background: #2a2a2a;
+            color: white;
+            font-size: 24px;
+            min-height: 44px;
+        }
+
+        .name-select:focus, .name-input:focus {
+            outline: none;
+            border-color: #666;
+        }
+
+        .game-settings {
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .setting-group {
+            margin-bottom: 20px;
+        }
+
+        .setting-group select {
+            width: 100%;
+            padding: 30px;
+            border: 2px solid #333;
+            background: #2a2a2a;
+            color: white;
+            font-size: 24px;
+            min-height: 44px;
+            padding: 12px;
+        }
+
+        .setting-group input {
+            width: 100%;
+            padding: 30px;
+            border: 2px solid #333;
+            background: #2a2a2a;
+            color: white;
+            font-size: 24px;
+        }
+
+        .setting-group input:focus {
+            outline: none;
+            border-color: #666;
+        }
+
+        .start-game-button {
+            margin-top: 20px;
+            padding: 30px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 0;
+            font-size: 24px;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        /* Disabled states */
+        .player-score.completed {
+            opacity: 0.7;
+        }
+
+        .score-button:disabled,
+        .control-button:disabled,
+        .action-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Force landscape */
+        @media screen and (orientation: portrait) {
+            body:after {
+                content: "Bitte Gerät drehen";
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: #1a1a1a;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 36px;
+                z-index: 1000;
+            }
+        }
+
+        .loading-indicator {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #1e4620;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: none;
+            touch-action: none;
+        }
+
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+        }
+
+        /* Touch feedback animations */
+        .button, .control-button, .score-button, .delete-button, .filter-button, .nav-button {
+            transition: transform 0.1s ease, background-color 0.2s ease;
+        }
+
+        .button:active, .control-button:active, .score-button:active, .delete-button:active, .filter-button:active, .nav-button:active {
+            transform: scale(0.95);
+        }
+
+        /* Ensure minimum touch target size */
+        .button, .control-button, .score-button, .delete-button, .filter-button, .nav-button {
+            min-height: 44px;
+            min-width: 44px;
+            padding: 12px 24px;
+        }
+
+        /* Touch feedback for game items */
+        .game-item {
+            transition: transform 0.1s ease, background-color 0.2s ease;
+        }
+
+        .game-item:active {
+            transform: scale(0.98);
+        }
+
+        /* Input fields touch optimization */
+        input {
+            min-height: 44px;
+            padding: 12px;
+            font-size: 1.2rem;
+        }
+
+        /* Select fields touch optimization */
+        select {
+            min-height: 44px;
+            padding: 12px;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="screen-container">
+        <!-- New Game Screen -->
+        <div class="screen" id="new-game-screen">
+            <div class="screen-content">
+                <h1 class="screen-title">Neues Spiel</h1>
+                <div class="player-inputs">
+                    <div class="player-input">
+                        <label for="player1">Spieler 1</label>
+                        <div class="name-input-container">
+                            <select id="player1-select" class="name-select" onchange="updatePlayerInput('player1')">
+                                <option value="">Vorherige Spieler...</option>
+                            </select>
+                            <input type="text" id="player1" placeholder="Name Spieler 1" class="name-input">
+                        </div>
+                    </div>
+                    <div class="player-input">
+                        <label for="player2">Spieler 2</label>
+                        <div class="name-input-container">
+                            <select id="player2-select" class="name-select" onchange="updatePlayerInput('player2')">
+                                <option value="">Vorherige Spieler...</option>
+                            </select>
+                            <input type="text" id="player2" placeholder="Name Spieler 2" class="name-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="game-settings">
+                    <div class="setting-group">
+                        <label for="game-type">Spieltyp</label>
+                        <select id="game-type">
+                            <option value="8-Ball">8-Ball</option>
+                            <option value="9-Ball">9-Ball</option>
+                            <option value="10-Ball">10-Ball</option>
+                            <option value="14/1">14/1</option>
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <label for="race-to">Race to X (optional)</label>
+                        <input type="number" id="race-to" placeholder="0" min="0" max="99">
+                    </div>
+                </div>
+                <div class="nav-buttons">
+                    <button class="nav-button" onclick="createNewGame()">Spiel starten</button>
+                    <button class="nav-button" onclick="showScreen('game-list-screen')">Abbrechen</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game List Screen -->
+        <div class="screen active" id="game-list-screen">
+            <div class="screen-content">
+                <h1 class="screen-title">Spiele</h1>
+                <div class="game-list">
+                    <div class="game-filters">
+                        <button class="filter-button active" onclick="filterGames('all')">Alle</button>
+                        <button class="filter-button" onclick="filterGames('active')">Aktiv</button>
+                        <button class="filter-button" onclick="filterGames('completed')">Abgeschlossen</button>
+                    </div>
+                    <div id="games-container">
+                        <!-- Games will be added dynamically -->
+                    </div>
+                </div>
+                <div class="nav-buttons">
+                    <button class="nav-button" onclick="showScreen('new-game-screen')">Neues Spiel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Detail Screen -->
+        <div class="screen" id="game-detail-screen">
+            <div class="screen-content">
+                <div class="game-header">
+                    <div class="game-title" id="game-title">8-Ball | Race to 5</div>
+                    <button class="nav-button" onclick="showScreen('game-list-screen')">Zurück zur Liste</button>
+                </div>
+                <div class="score-display">
+                    <div class="player-score">
+                        <div class="player-name" id="player1-name">Spieler 1</div>
+                        <div class="score" id="score1">0</div>
+                        <div class="score-buttons">
+                            <button class="score-button" onclick="updateScore(currentGameId, 1, -1)">-</button>
+                            <button class="score-button" onclick="updateScore(currentGameId, 1, 1)">+</button>
+                        </div>
+                    </div>
+                    <div class="player-score">
+                        <div class="player-name" id="player2-name">Spieler 2</div>
+                        <div class="score" id="score2">0</div>
+                        <div class="score-buttons">
+                            <button class="score-button" onclick="updateScore(currentGameId, 2, -1)">-</button>
+                            <button class="score-button" onclick="updateScore(currentGameId, 2, 1)">+</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="game-controls">
+                    <button class="control-button warning" id="game-control">Spiel beenden</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game History Screen -->
+        <div class="screen" id="game-history-screen">
+            <div class="screen-content">
+                <h1 class="screen-title">Spielhistorie</h1>
+                <div class="nav-buttons">
+                    <button class="nav-button" onclick="showScreen('game-list-screen')">Zurück zur Liste</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="loading-overlay"></div>
+    <div class="loading-indicator"></div>
+
+    <script>
+        // Screen management
+        const screens = {
+            'new-game-screen': document.getElementById('new-game-screen'),
+            'game-list-screen': document.getElementById('game-list-screen'),
+            'game-detail-screen': document.getElementById('game-detail-screen'),
+            'game-history-screen': document.getElementById('game-history-screen')
+        };
+
+        function showScreen(screenId) {
+            const currentScreen = document.querySelector('.screen.active');
+            const newScreen = document.getElementById(screenId);
+            
+            if (currentScreen) {
+                currentScreen.classList.remove('active');
+                currentScreen.classList.add('slide-out');
+                
+                setTimeout(() => {
+                    currentScreen.classList.remove('slide-out');
+                    newScreen.classList.add('active');
+                    newScreen.classList.add('slide-in');
+                    
+                    setTimeout(() => {
+                        newScreen.classList.remove('slide-in');
+                    }, 300);
+                }, 300);
+            } else {
+                newScreen.classList.add('active');
+            }
+
+            // Update name history when showing new game screen
+            if (screenId === 'new-game-screen') {
+                updateNameHistory();
+            }
+        }
+
+        function showLoading() {
+            document.querySelector('.loading-overlay').style.display = 'block';
+            document.querySelector('.loading-indicator').style.display = 'block';
+        }
+
+        function hideLoading() {
+            document.querySelector('.loading-overlay').style.display = 'none';
+            document.querySelector('.loading-indicator').style.display = 'none';
+        }
+
+        // Game data management
+        let games = [];
+        let currentGameId = null;
+
+        // Load games from localStorage on startup
+        function loadGames() {
+            const savedGames = localStorage.getItem('bscscore_games');
+            if (savedGames) {
+                games = JSON.parse(savedGames);
+                renderGames();
+            }
+        }
+
+        // Save games to localStorage
+        function saveGames() {
+            localStorage.setItem('bscscore_games', JSON.stringify(games));
+        }
+
+        // Initialize game list
+        loadGames();
+
+        // Track player name history
+        let playerNameHistory = [];
+
+        function updateNameHistory() {
+            // Collect all player names from games
+            const allNames = games.flatMap(game => [game.player1, game.player2]);
+            
+            // Create a map of names to their latest usage
+            const nameLastUsed = {};
+            games.forEach(game => {
+                nameLastUsed[game.player1] = Math.max(
+                    nameLastUsed[game.player1] || 0,
+                    new Date(game.updatedAt).getTime()
+                );
+                nameLastUsed[game.player2] = Math.max(
+                    nameLastUsed[game.player2] || 0,
+                    new Date(game.updatedAt).getTime()
+                );
+            });
+
+            // Sort names by latest usage and remove duplicates
+            playerNameHistory = [...new Set(Object.keys(nameLastUsed))]
+                .sort((a, b) => nameLastUsed[b] - nameLastUsed[a]);
+
+            // Update select dropdowns
+            updateNameSelects();
+        }
+
+        function updateNameSelects() {
+            const player1Select = document.getElementById('player1-select');
+            const player2Select = document.getElementById('player2-select');
+
+            // Clear existing options except the first one
+            while (player1Select.options.length > 1) player1Select.remove(1);
+            while (player2Select.options.length > 1) player2Select.remove(1);
+
+            // Add player names to dropdowns
+            playerNameHistory.forEach(name => {
+                const option1 = new Option(name, name);
+                const option2 = new Option(name, name);
+                player1Select.add(option1);
+                player2Select.add(option2);
+            });
+        }
+
+        function updatePlayerInput(playerId) {
+            const select = document.getElementById(`${playerId}-select`);
+            const input = document.getElementById(playerId);
+            if (select.value) {
+                input.value = select.value;
+            }
+        }
+
+        // Update createNewGame to handle the new input method
+        function createNewGame() {
+            const player1Name = document.getElementById('player1').value.trim();
+            const player2Name = document.getElementById('player2').value.trim();
+            const gameType = document.getElementById('game-type').value;
+            const raceTo = document.getElementById('race-to').value;
+            
+            if (!player1Name || !player2Name) {
+                alert('Bitte Namen für beide Spieler eingeben');
+                return;
+            }
+
+            const newGame = {
+                id: Date.now(),
+                player1: player1Name,
+                player2: player2Name,
+                score1: 0,
+                score2: 0,
+                gameType: gameType,
+                raceTo: raceTo ? parseInt(raceTo) : null,
+                status: 'active',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+
+            games.push(newGame);
+            saveGames();
+            updateNameHistory();
+            renderGames();
+            showGameDetail(newGame.id);
+        }
+
+        function updateScore(gameId, player, change) {
+            const game = games.find(g => g.id === gameId);
+            if (!game || game.status === 'completed') return;
+
+            if (player === 1) {
+                game.score1 = Math.max(0, game.score1 + change);
+            } else {
+                game.score2 = Math.max(0, game.score2 + change);
+            }
+
+            game.updatedAt = new Date().toISOString();
+
+            // Check for game completion
+            if (game.raceTo && (game.score1 >= game.raceTo || game.score2 >= game.raceTo)) {
+                game.status = 'completed';
+            }
+
+            saveGames();
+            renderGames();
+            
+            // Update the game detail view scores directly if we're on it
+            if (document.getElementById('game-detail-screen').classList.contains('active')) {
+                document.getElementById('score1').textContent = game.score1;
+                document.getElementById('score2').textContent = game.score2;
+                
+                // Update control button if game is completed
+                if (game.status === 'completed') {
+                    const controlButton = document.getElementById('game-control');
+                    controlButton.textContent = 'Zurück zur Liste';
+                    controlButton.onclick = () => showScreen('game-list-screen');
+                    controlButton.classList.add('disabled');
+                    
+                    // Disable score buttons
+                    const scoreButtons = document.querySelectorAll('.score-button');
+                    scoreButtons.forEach(button => {
+                        button.disabled = true;
+                    });
+                }
+            }
+        }
+
+        function handleGameOver(gameId) {
+            const game = games.find(g => g.id === gameId);
+            if (!game) return;
+
+            game.status = 'completed';
+            game.updatedAt = new Date().toISOString();
+            saveGames();
+            renderGames();
+            showScreen('game-list-screen');
+        }
+
+        function deleteGame(gameId) {
+            if (!confirm('Möchten Sie dieses Spiel wirklich löschen?')) {
+                return;
+            }
+
+            showLoading();
+            setTimeout(() => {
+                const gameIndex = games.findIndex(g => g.id === gameId);
+                if (gameIndex !== -1) {
+                    games.splice(gameIndex, 1);
+                    saveGames();
+                    renderGames();
+                }
+                hideLoading();
+            }, 500);
+        }
+
+        function renderGames(filter = 'all') {
+            const gamesContainer = document.getElementById('games-container');
+            const filteredGames = games
+                .filter(game => {
+                    if (filter === 'active') return game.status === 'active';
+                    if (filter === 'completed') return game.status === 'completed';
+                    return true;
+                })
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+            if (filteredGames.length === 0) {
+                gamesContainer.innerHTML = '<div class="empty-state">Keine Spiele vorhanden</div>';
+                return;
+            }
+
+            gamesContainer.innerHTML = filteredGames.map(game => `
+                <div class="game-item ${game.status === 'completed' ? 'completed' : 'active'}">
+                    <div class="game-info" onclick="showGameDetail(${game.id})">
+                        <div class="game-type">${game.gameType}${game.raceTo ? ` | ${game.raceTo}` : ''}</div>
+                        <div class="player-names">${game.player1} vs ${game.player2}</div>
+                        <div class="game-scores">${game.score1} - ${game.score2}</div>
+                    </div>
+                    <button class="delete-button" onclick="deleteGame(${game.id})"></button>
+                </div>
+            `).join('');
+        }
+
+        function showGameDetail(gameId) {
+            const game = games.find(g => g.id === gameId);
+            if (!game) return;
+
+            currentGameId = gameId;
+            
+            // Update game title
+            document.getElementById('game-title').textContent = 
+                `${game.gameType}${game.raceTo ? ` | Race to ${game.raceTo}` : ''}`;
+            
+            // Update player names
+            document.getElementById('player1-name').textContent = game.player1;
+            document.getElementById('player2-name').textContent = game.player2;
+            
+            // Update scores
+            document.getElementById('score1').textContent = game.score1;
+            document.getElementById('score2').textContent = game.score2;
+
+            // Add or remove franky class based on player names
+            const player1Container = document.querySelector('.player-score:first-child');
+            const player2Container = document.querySelector('.player-score:last-child');
+            
+            player1Container.classList.toggle('franky', game.player1 === 'Fränky');
+            player2Container.classList.toggle('franky', game.player2 === 'Fränky');
+
+            // Update control button
+            const controlButton = document.getElementById('game-control');
+            if (game.status === 'completed') {
+                controlButton.textContent = 'Zurück zur Liste';
+                controlButton.onclick = () => showScreen('game-list-screen');
+                controlButton.classList.add('disabled');
+            } else {
+                controlButton.textContent = 'Spiel beenden';
+                controlButton.onclick = () => handleGameOver(gameId);
+                controlButton.classList.remove('disabled');
+            }
+
+            // Disable score buttons for completed games
+            const scoreButtons = document.querySelectorAll('.score-button');
+            scoreButtons.forEach(button => {
+                button.disabled = game.status === 'completed';
+            });
+
+            showScreen('game-detail-screen');
+        }
+
+        // Initialize with game list screen
+        showScreen('game-list-screen');
+
+        function filterGames(filter) {
+            // Update active state of filter buttons
+            document.querySelectorAll('.filter-button').forEach(button => {
+                button.classList.remove('active');
+            });
+            document.querySelector(`.filter-button[onclick="filterGames('${filter}')"]`).classList.add('active');
+            
+            // Render games with the selected filter
+            renderGames(filter);
+        }
+    </script>
+</body>
+</html>
