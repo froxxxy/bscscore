@@ -389,7 +389,7 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
-            margin-top: 20px;
+            margin: 20px 0 40px 0;  /* Increased bottom margin */
         }
 
         .nav-button {
@@ -549,6 +549,10 @@
             height: 100%;
             background-color: rgba(0, 0, 0, 0.7);
             z-index: 1000;
+        }
+
+        .modal.show {
+            display: flex;
             justify-content: center;
             align-items: center;
         }
@@ -818,6 +822,9 @@
             <div class="screen-content">
                 <h1 class="screen-title">Spiele</h1>
                 <div class="game-list">
+                    <div class="nav-buttons">
+                        <button class="nav-button" onclick="showScreen('new-game-screen')">Neues Spiel</button>
+                    </div>
                     <div class="game-filters">
                         <button class="filter-button active" onclick="filterGames('all')">Alle</button>
                         <button class="filter-button" onclick="filterGames('active')">Aktiv</button>
@@ -826,9 +833,6 @@
                     <div id="games-container">
                         <!-- Games will be added dynamically -->
                     </div>
-                </div>
-                <div class="nav-buttons">
-                    <button class="nav-button" onclick="showScreen('new-game-screen')">Neues Spiel</button>
                 </div>
             </div>
         </div>
@@ -1100,10 +1104,29 @@
         }
 
         function deleteGame(gameId) {
-            if (!confirm('Möchten Sie dieses Spiel wirklich löschen?')) {
-                return;
-            }
+            const game = games.find(g => g.id === gameId);
+            if (!game) return;
 
+            currentGameId = gameId; // Set the currentGameId for the modal
+
+            const modal = document.getElementById('modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalMessage = document.getElementById('modal-message');
+
+            modalTitle.textContent = 'Spiel löschen';
+            modalMessage.textContent = `Möchten Sie das Spiel zwischen ${game.player1} und ${game.player2} wirklich löschen?`;
+            modal.classList.add('show');
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('modal');
+            modal.classList.remove('show');
+            currentGameId = null; // Clear the currentGameId when closing the modal
+        }
+
+        function confirmDeleteGame(gameId) {
+            if (!gameId) return; // Guard against missing gameId
+            
             showLoading();
             setTimeout(() => {
                 const gameIndex = games.findIndex(g => g.id === gameId);
@@ -1111,8 +1134,12 @@
                     games.splice(gameIndex, 1);
                     saveGames();
                     renderGames();
+                    if (currentGameId === gameId) {
+                        showScreen('game-list-screen');
+                    }
                 }
                 hideLoading();
+                closeModal();
             }, 500);
         }
 
