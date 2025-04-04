@@ -898,6 +898,49 @@
                 min-width: 70px;
             }
         }
+
+        /* Fullscreen toggle button */
+        .fullscreen-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background-color: rgba(52, 152, 219, 0.9);
+            border: none;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            transition: background-color 0.2s, transform 0.2s;
+        }
+
+        .fullscreen-toggle:hover {
+            background-color: rgba(52, 152, 219, 1);
+            transform: scale(1.1);
+        }
+
+        .fullscreen-toggle:active {
+            transform: scale(0.95);
+        }
+
+        .fullscreen-toggle svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        @media screen and (max-width: 480px) {
+            .fullscreen-toggle {
+                bottom: 15px;
+                right: 15px;
+                width: 40px;
+                height: 40px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1013,6 +1056,12 @@
     <div class="loading-overlay">
         <div class="loading-indicator"></div>
     </div>
+
+    <button id="fullscreen-toggle" class="fullscreen-toggle" onclick="toggleFullscreen()">
+        <svg viewBox="0 0 24 24" width="24" height="24">
+            <path fill="currentColor" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+        </svg>
+    </button>
 
     <div id="modal" class="modal">
         <div class="modal-content">
@@ -1360,6 +1409,31 @@
             // Render games with the selected filter
             renderGames(filter);
         }
+
+        // Fullscreen functionality
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        // Update fullscreen button icon when fullscreen changes
+        document.addEventListener('fullscreenchange', () => {
+            const button = document.getElementById('fullscreen-toggle');
+            if (document.fullscreenElement) {
+                button.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24">
+                    <path fill="currentColor" d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/>
+                </svg>`;
+            } else {
+                button.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24">
+                    <path fill="currentColor" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+                </svg>`;
+            }
+        });
     </script>
 </body>
 </html>
