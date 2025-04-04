@@ -915,7 +915,7 @@
             align-items: center;
             justify-content: center;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-            z-index: 1000;
+            z-index: 9999;
             transition: background-color 0.2s, transform 0.2s;
         }
 
@@ -1079,6 +1079,21 @@
         </div>
     </div>
 
+    <div id="validation-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close-button" onclick="closeValidationModal()">&times;</span>
+                <h2 id="validation-modal-title">Fehler</h2>
+            </div>
+            <div class="modal-body">
+                <p id="validation-modal-message"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-button cancel" onclick="closeValidationModal()">OK</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Screen management
         const screens = {
@@ -1199,7 +1214,19 @@
             }
         }
 
-        // Update createNewGame to handle the new input method
+        function showValidationModal(message) {
+            const modal = document.getElementById('validation-modal');
+            const modalMessage = document.getElementById('validation-modal-message');
+            modalMessage.textContent = message;
+            modal.classList.add('show');
+        }
+
+        function closeValidationModal() {
+            const modal = document.getElementById('validation-modal');
+            modal.classList.remove('show');
+        }
+
+        // Update createNewGame to use the validation modal
         function createNewGame() {
             const player1Name = document.getElementById('player1').value.trim();
             const player2Name = document.getElementById('player2').value.trim();
@@ -1207,7 +1234,7 @@
             const raceTo = document.getElementById('race-to').value;
             
             if (!player1Name || !player2Name) {
-                alert('Bitte Namen für beide Spieler eingeben');
+                showValidationModal('Bitte Namen für beide Spieler eingeben');
                 return;
             }
 
