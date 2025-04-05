@@ -314,12 +314,16 @@
             background: #4CAF50; /* Bright green */
         }
 
+        .player-score:nth-child(2) {
+            background: #1f21f2; /* Bright blue */
+        }
+
         .player-score:last-child {
             background: #f44336; /* Bright red */
         }
 
         .player-score.franky {
-            background: #1f21f2 !important; /* Special blue for Fränky */
+            background: #ffffff !important; /* Special background for Fränky */
         }
 
         .player-score.franky .player-name,
@@ -941,6 +945,43 @@
                 height: 40px;
             }
         }
+
+        .optional-player {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+        }
+
+        .optional-player label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .optional-player input[type="checkbox"] {
+            margin: 0;
+        }
+
+        .scores-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .player-score {
+            flex: 1;
+            min-width: 200px;
+            max-width: 400px;
+        }
+
+        @media (max-width: 768px) {
+            .player-score {
+                min-width: 150px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -968,6 +1009,15 @@
                             <input type="text" id="player2" placeholder="Name Spieler 2" class="name-input">
                         </div>
                     </div>
+                    <div class="player-input">
+                        <label for="player3">Spieler 3 (optional)</label>
+                        <div class="name-input-container">
+                            <select id="player3-select" class="name-select" onchange="updatePlayerInput('player3')">
+                                <option value="">Vorherige Spieler...</option>
+                            </select>
+                            <input type="text" id="player3" placeholder="Name Spieler 3" class="name-input">
+                        </div>
+                    </div>
                 </div>
                 <div class="game-settings">
                     <div class="setting-group">
@@ -976,7 +1026,7 @@
                             <option value="8-Ball">8-Ball</option>
                             <option value="9-Ball">9-Ball</option>
                             <option value="10-Ball">10-Ball</option>
-                            <option value="14/1">14/1</option>
+                            <option value="14/1">14/1 endlos</option>
                         </select>
                     </div>
                     <div class="setting-group">
@@ -1018,7 +1068,7 @@
                     <div class="game-title" id="game-title">8-Ball | Race to 5</div>
                     <button class="nav-button" onclick="showScreen('game-list-screen')">Zurück zur Liste</button>
                 </div>
-                <div class="score-display">
+                <div class="scores-container">
                     <div class="player-score">
                         <div class="player-name" id="player1-name">Spieler 1</div>
                         <div class="score" id="score1">0</div>
@@ -1035,9 +1085,18 @@
                             <button class="score-button" onclick="updateScore(currentGameId, 2, 1)">+</button>
                         </div>
                     </div>
+                    <div class="player-score" id="player3-score" style="display: none;">
+                        <div class="player-name" id="player3-name">Spieler 3</div>
+                        <div class="score" id="score3">0</div>
+                        <div class="score-buttons">
+                            <button class="score-button" onclick="updateScore(currentGameId, 3, -1)">-</button>
+                            <button class="score-button" onclick="updateScore(currentGameId, 3, 1)">+</button>
+                        </div>
+                    </div>
                 </div>
                 <div class="game-controls">
-                    <button class="control-button warning" id="game-control">Spiel beenden</button>
+                    <button id="game-control" class="control-button" onclick="finishGame()">Spiel beenden</button>
+                    <button id="delete-game" class="control-button delete" onclick="deleteGame(currentGameId)">Spiel löschen</button>
                 </div>
             </div>
         </div>
@@ -1166,19 +1225,14 @@
 
         function updateNameHistory() {
             // Collect all player names from games
-            const allNames = games.flatMap(game => [game.player1, game.player2]);
+            const allNames = games.flatMap(game => [game.player1, game.player2, game.player3].filter(Boolean));
             
             // Create a map of names to their latest usage
             const nameLastUsed = {};
             games.forEach(game => {
-                nameLastUsed[game.player1] = Math.max(
-                    nameLastUsed[game.player1] || 0,
-                    new Date(game.updatedAt).getTime()
-                );
-                nameLastUsed[game.player2] = Math.max(
-                    nameLastUsed[game.player2] || 0,
-                    new Date(game.updatedAt).getTime()
-                );
+                if (game.player1) nameLastUsed[game.player1] = Math.max(nameLastUsed[game.player1] || 0, new Date(game.updatedAt).getTime());
+                if (game.player2) nameLastUsed[game.player2] = Math.max(nameLastUsed[game.player2] || 0, new Date(game.updatedAt).getTime());
+                if (game.player3) nameLastUsed[game.player3] = Math.max(nameLastUsed[game.player3] || 0, new Date(game.updatedAt).getTime());
             });
 
             // Sort names by latest usage and remove duplicates
@@ -1192,17 +1246,21 @@
         function updateNameSelects() {
             const player1Select = document.getElementById('player1-select');
             const player2Select = document.getElementById('player2-select');
+            const player3Select = document.getElementById('player3-select');
 
             // Clear existing options except the first one
             while (player1Select.options.length > 1) player1Select.remove(1);
             while (player2Select.options.length > 1) player2Select.remove(1);
+            while (player3Select.options.length > 1) player3Select.remove(1);
 
             // Add player names to dropdowns
             playerNameHistory.forEach(name => {
                 const option1 = new Option(name, name);
                 const option2 = new Option(name, name);
+                const option3 = new Option(name, name);
                 player1Select.add(option1);
                 player2Select.add(option2);
+                player3Select.add(option3);
             });
         }
 
@@ -1226,10 +1284,10 @@
             modal.classList.remove('show');
         }
 
-        // Update createNewGame to use the validation modal
         function createNewGame() {
             const player1Name = document.getElementById('player1').value.trim();
             const player2Name = document.getElementById('player2').value.trim();
+            const player3Name = document.getElementById('player3').value.trim();
             const gameType = document.getElementById('game-type').value;
             const raceTo = document.getElementById('race-to').value;
             
@@ -1242,8 +1300,10 @@
                 id: Date.now(),
                 player1: player1Name,
                 player2: player2Name,
+                player3: player3Name || null,
                 score1: 0,
                 score2: 0,
+                score3: 0,
                 gameType: gameType,
                 raceTo: raceTo ? parseInt(raceTo) : null,
                 status: 'active',
@@ -1264,14 +1324,16 @@
 
             if (player === 1) {
                 game.score1 = Math.max(0, game.score1 + change);
-            } else {
+            } else if (player === 2) {
                 game.score2 = Math.max(0, game.score2 + change);
+            } else if (player === 3) {
+                game.score3 = Math.max(0, game.score3 + change);
             }
 
             game.updatedAt = new Date().toISOString();
 
             // Check for game completion
-            if (game.raceTo && (game.score1 >= game.raceTo || game.score2 >= game.raceTo)) {
+            if (game.raceTo && (game.score1 >= game.raceTo || game.score2 >= game.raceTo || game.score3 >= game.raceTo)) {
                 game.status = 'completed';
             }
 
@@ -1282,6 +1344,7 @@
             if (document.getElementById('game-detail-screen').classList.contains('active')) {
                 document.getElementById('score1').textContent = game.score1;
                 document.getElementById('score2').textContent = game.score2;
+                document.getElementById('score3').textContent = game.score3;
                 
                 // Update control button if game is completed
                 if (game.status === 'completed') {
@@ -1365,16 +1428,26 @@
                 return;
             }
 
-            gamesContainer.innerHTML = filteredGames.map(game => `
-                <div class="game-item ${game.status === 'completed' ? 'completed' : 'active'}">
-                    <div class="game-info" onclick="showGameDetail(${game.id})">
-                        <div class="game-type">${game.gameType}${game.raceTo ? ` | ${game.raceTo}` : ''}</div>
-                        <div class="player-names">${game.player1} vs ${game.player2}</div>
-                        <div class="game-scores">${game.score1} - ${game.score2}</div>
+            gamesContainer.innerHTML = filteredGames.map(game => {
+                const playerNames = game.player3 
+                    ? `${game.player1} vs ${game.player2} vs ${game.player3}`
+                    : `${game.player1} vs ${game.player2}`;
+                
+                const scores = game.player3
+                    ? `${game.score1} - ${game.score2} - ${game.score3}`
+                    : `${game.score1} - ${game.score2}`;
+
+                return `
+                    <div class="game-item ${game.status === 'completed' ? 'completed' : 'active'}">
+                        <div class="game-info" onclick="showGameDetail(${game.id})">
+                            <div class="game-type">${game.gameType}${game.raceTo ? ` | ${game.raceTo}` : ''}</div>
+                            <div class="player-names">${playerNames}</div>
+                            <div class="game-scores">${scores}</div>
+                        </div>
+                        <button class="delete-button" onclick="deleteGame(${game.id})"></button>
                     </div>
-                    <button class="delete-button" onclick="deleteGame(${game.id})"></button>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         function showGameDetail(gameId) {
@@ -1391,16 +1464,28 @@
             document.getElementById('player1-name').textContent = game.player1;
             document.getElementById('player2-name').textContent = game.player2;
             
+            // Handle player 3
+            const player3Score = document.getElementById('player3-score');
+            if (game.player3) {
+                document.getElementById('player3-name').textContent = game.player3;
+                document.getElementById('score3').textContent = game.score3;
+                player3Score.style.display = 'flex';
+            } else {
+                player3Score.style.display = 'none';
+            }
+            
             // Update scores
             document.getElementById('score1').textContent = game.score1;
             document.getElementById('score2').textContent = game.score2;
 
             // Add or remove franky class based on player names
             const player1Container = document.querySelector('.player-score:first-child');
-            const player2Container = document.querySelector('.player-score:last-child');
+            const player2Container = document.querySelector('.player-score:nth-child(2)');
+            const player3Container = document.getElementById('player3-score');
             
             player1Container.classList.toggle('franky', game.player1 === 'Fränky');
             player2Container.classList.toggle('franky', game.player2 === 'Fränky');
+            player3Container.classList.toggle('franky', game.player3 === 'Fränky');
 
             // Update control button
             const controlButton = document.getElementById('game-control');
@@ -1410,7 +1495,7 @@
                 controlButton.classList.add('disabled');
             } else {
                 controlButton.textContent = 'Spiel beenden';
-                controlButton.onclick = () => handleGameOver(gameId);
+                controlButton.onclick = () => finishGame();
                 controlButton.classList.remove('disabled');
             }
 
