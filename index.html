@@ -1508,6 +1508,16 @@
             showScreen('game-detail-screen');
         }
 
+        function finishGame() {
+            const game = games.find(g => g.id === currentGameId);
+            if (!game) return;
+
+            game.status = 'completed';
+            game.updatedAt = new Date().toISOString();
+            saveGames();
+            showGameDetail(currentGameId);
+        }
+
         // Initialize with game list screen
         showScreen('game-list-screen');
 
