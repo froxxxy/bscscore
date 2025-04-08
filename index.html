@@ -982,6 +982,106 @@
                 min-width: 150px;
             }
         }
+
+        /* Game completion modal styles */
+        #game-completion-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #game-completion-modal.show {
+            display: flex;
+        }
+
+        #game-completion-modal .modal-content {
+            background-color: #2a2a2a;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+            margin: auto;
+            transform: translateY(0);
+        }
+
+        .final-scores {
+            margin: 20px 0;
+        }
+
+        .final-score {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            margin-bottom: 10px;
+            background: #333;
+            border-radius: 5px;
+            font-size: 24px;
+        }
+
+        .final-score .player-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .final-score .score {
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .winner-announcement {
+            text-align: center;
+            margin: 20px 0;
+            padding: 20px;
+            background: #4CAF50;
+            border-radius: 5px;
+        }
+
+        .winner-announcement h3 {
+            font-size: 24px;
+            margin: 0;
+            color: white;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-buttons .btn {
+            flex: 1;
+            padding: 20px;
+            font-size: 20px;
+            border: none;
+            border-radius: 0;
+            cursor: pointer;
+            color: white;
+        }
+
+        .modal-buttons .btn--warning {
+            background: #f44336;
+        }
+
+        .modal-buttons .btn:not(.btn--warning) {
+            background: #333;
+        }
+
+        #game-completion-modal h2 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -1150,6 +1250,21 @@
             </div>
             <div class="modal-footer">
                 <button class="modal-button cancel" onclick="closeValidationModal()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game completion modal -->
+    <div id="game-completion-modal" class="modal">
+        <div class="modal-content">
+            <h2>Spiel beenden</h2>
+            <div id="game-summary">
+                <div class="final-scores"></div>
+                <div class="winner-announcement"></div>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn--warning" onclick="confirmGameCompletion()">Bestätigen</button>
+                <button class="btn" onclick="closeGameCompletionModal()">Abbrechen</button>
             </div>
         </div>
     </div>
@@ -1334,8 +1449,8 @@
             game.updatedAt = new Date().toISOString();
 
             // Check for game completion
-            if (game.raceTo && (game.score1 >= game.raceTo || game.score2 >= game.raceTo || game.score3 >= game.raceTo)) {
-                game.status = 'completed';
+            if (game.raceTo && (game.score1 >= game.raceTo || game.score2 >= game.raceTo || (game.player3 && game.score3 >= game.raceTo))) {
+                showGameCompletionModal();
             }
 
             saveGames();
@@ -1346,20 +1461,6 @@
                 document.getElementById('score1').textContent = game.score1;
                 document.getElementById('score2').textContent = game.score2;
                 document.getElementById('score3').textContent = game.score3;
-                
-                // Update control button if game is completed
-                if (game.status === 'completed') {
-                    const controlButton = document.getElementById('game-control');
-                    controlButton.textContent = 'Zurück zur Liste';
-                    controlButton.onclick = () => showScreen('game-list-screen');
-                    controlButton.classList.add('disabled');
-                    
-                    // Disable score buttons
-                    const scoreButtons = document.querySelectorAll('.score-button');
-                    scoreButtons.forEach(button => {
-                        button.disabled = true;
-                    });
-                }
             }
         }
 
@@ -1513,10 +1614,7 @@
             const game = games.find(g => g.id === currentGameId);
             if (!game) return;
 
-            game.status = 'completed';
-            game.updatedAt = new Date().toISOString();
-            saveGames();
-            showGameDetail(currentGameId);
+            showGameCompletionModal();
         }
 
         // Initialize with game list screen
@@ -1549,7 +1647,7 @@
             const button = document.getElementById('fullscreen-toggle');
             if (document.fullscreenElement) {
                 button.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24">
-                    <path fill="currentColor" d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/>
+                    <path fill="currentColor" d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
                 </svg>`;
             } else {
                 button.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24">
@@ -1557,6 +1655,83 @@
                 </svg>`;
             }
         });
+
+        // Game completion functions
+        function showGameCompletionModal() {
+            const game = games.find(g => g.id === currentGameId);
+            if (!game) return;
+
+            const modal = document.getElementById('game-completion-modal');
+            const finalScores = modal.querySelector('.final-scores');
+            const winnerAnnouncement = modal.querySelector('.winner-announcement');
+
+            // Create score summary
+            let scoreHtml = '';
+            
+            // Add player 1
+            scoreHtml += `
+                <div class="final-score">
+                    <span class="player-name">${game.player1}</span>
+                    <span class="score">${game.score1}</span>
+                </div>
+            `;
+            
+            // Add player 2
+            scoreHtml += `
+                <div class="final-score">
+                    <span class="player-name">${game.player2}</span>
+                    <span class="score">${game.score2}</span>
+                </div>
+            `;
+            
+            // Add player 3 if exists
+            if (game.player3) {
+                scoreHtml += `
+                    <div class="final-score">
+                        <span class="player-name">${game.player3}</span>
+                        <span class="score">${game.score3}</span>
+                    </div>
+                `;
+            }
+            
+            finalScores.innerHTML = scoreHtml;
+
+            // Determine winner
+            const scores = [game.score1, game.score2];
+            if (game.player3) scores.push(game.score3);
+            
+            const maxScore = Math.max(...scores);
+            const winners = [];
+            
+            if (game.score1 === maxScore) winners.push(game.player1);
+            if (game.score2 === maxScore) winners.push(game.player2);
+            if (game.player3 && game.score3 === maxScore) winners.push(game.player3);
+            
+            const winnerText = winners.length > 1 
+                ? `Unentschieden zwischen ${winners.join(' und ')}` 
+                : `${winners[0]} hat gewonnen!`;
+            
+            winnerAnnouncement.innerHTML = `<h3>${winnerText}</h3>`;
+
+            // Show modal
+            modal.classList.add('show');
+        }
+
+        function closeGameCompletionModal() {
+            document.getElementById('game-completion-modal').classList.remove('show');
+        }
+
+        function confirmGameCompletion() {
+            const game = games.find(g => g.id === currentGameId);
+            if (!game) return;
+
+            game.status = 'completed';
+            game.updatedAt = new Date().toISOString();
+            saveGames();
+            renderGames();
+            showGameDetail(currentGameId);
+            closeGameCompletionModal();
+        }
     </script>
 </body>
 </html>
